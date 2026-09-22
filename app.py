@@ -61,10 +61,11 @@ try:
         jaula_seleccionada = st.sidebar.selectbox("Seleccionar Jaula / Estanque", jaulas)
         df_actual = df_centro[df_centro['jaula_id'] == jaula_seleccionada]
     else:
+        jaula_seleccionada = "Jaula General"
         df_actual = df_centro
 
     st.sidebar.markdown("---")
-    st.sidebar.info("💡 **Consejo:** Cambia los valores en tu Google Sheet en vivo para ver cómo reaccionan las alertas de la jaula seleccionada.")
+    st.sidebar.info("💡 **Consejo:** Asegúrate de que tu Google Sheet tenga las columnas `centro_id` y `jaula_id` para aprovechar el selector múltiple.")
 
     # Tomar la última fila de la jaula seleccionada
     if not df_actual.empty:
@@ -103,7 +104,7 @@ try:
         col5, col6, col7, col8 = st.columns(4)
         col5.metric("Estado Alimentación", "ACTIVO 🟢" if alimentacion == 1 else "DETENIDO 🔴", f"{tasa} kg/min")
         col6.metric("Fitoplancton (Algas)", f"{algas:,} cél/ml", "Bloom Nocivo" if algas > 2500 else "Normal")
-        col7.metric("Mortalidad Diaria", f"{mortalidad} peces", "Revisar Red" if mortality > 10 else "Estable")
+        col7.metric("Mortalidad Diaria", f"{mortalidad} peces", "Revisar Red" if mortalidad > 10 else "Estable")
         col8.metric("Silos de Alimento (Pontón)", f"{silo}%", "Reabastecer" if silo < 20 else "Suficiente")
 
         # 5. Pestañas de Análisis Histórico
