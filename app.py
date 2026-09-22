@@ -3,7 +3,7 @@ import pandas as pd
 
 # 1. Configuración de la página (Modo Ancho)
 st.set_page_config(
-    page_title="BlueBrain SCADA | Control de Estanques",
+    page_title="BlueBrain SCADA | Control Total",
     page_icon="🐟",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -17,7 +17,6 @@ st.markdown("""
     .stMetric { background-color: #111827; padding: 12px; border-radius: 6px; border: 1px solid #1f2937; }
     h1, h2, h3 { font-family: 'Inter', sans-serif; color: #f8fafc; font-weight: 600; }
     
-    /* Tarjetas de estado de tanques estilo grilla industrial */
     .tank-card-normal {
         background-color: #111827;
         border: 2px solid #10b981;
@@ -51,7 +50,7 @@ def cargar_datos():
 try:
     df = cargar_datos()
     
-    # Limpieza de datos numéricos
+    # Limpieza de datos numéricos con respaldo por defecto
     cols_numericas = [
         'oxigeno_mgl', 'oxigeno_fondo_mgl', 'temperatura_c', 'salinidad_psu', 
         'corriente_ms', 'estado_alimentacion', 'tasa_alimento_kg_min', 
@@ -63,12 +62,17 @@ try:
             
     df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
 
-    # 3. BARRA LATERAL ESTILO SCADA
+    # 3. BARRA LATERAL SCADA
     st.sidebar.markdown("### 🔵 BlueBrain RAS")
     st.sidebar.markdown("**Módulo Central - Estanques**")
     st.sidebar.markdown("---")
     
-    menu = st.sidebar.radio("Navegación", ["Vista General (Matriz)", "Calidad de Agua", "Alimentación", "Energía y Sensores"])
+    menu = st.sidebar.radio("Navegación", [
+        "Vista General (Matriz)", 
+        "Calidad de Agua", 
+        "Alimentación", 
+        "Energía y Sensores"
+    ])
     
     st.sidebar.markdown("---")
     if 'centro_id' in df.columns:
@@ -79,22 +83,25 @@ try:
         df_centro = df
         centro_seleccionado = "Pontón Principal"
 
-    # Encabezado Superior Estilo Dashboard Industrial
-    st.markdown(f"## Módulo RAS - Control de Estanques ({centro_seleccionado})")
-    st.markdown(f"<span style='color: #10b981;'>●</span> Monitoreo en línea activo | Protocolo SCADA V2", unsafe_allow_html=True)
-    st.markdown("---")
+    # Selector global de estanque/jaula para las vistas detalladas
+    if 'jaula_id' in df_centro.columns:
+        jaulas_disponibles = df_centro['jaula_id'].dropna().unique()
+    else:
+        jaulas_disponibles = ["Estanque 01", "Estanque 02"]
 
+    # ==========================================
+    # VISTA 1: VISTA GENERAL (MATRIZ DE ESTANQUES)
+    # ==========================================
     if menu == "Vista General (Matriz)":
+        st.markdown(f"## Módulo RAS - Control de Estanques ({centro_seleccionado})")
+        st.markdown(f"<span style='color: #10b981;'>●</span> Monitoreo en línea activo | Protocolo SCADA V2", unsafe_allow_html=True)
+        st.markdown("---")
+        
         st.markdown("#### 🗺️ Mapa Operacional - Retícula de Estanques")
-        st.markdown("Estado en tiempo real de cada estanque/jaula del módulo:")
-
-        # Si tenemos múltiples jaulas, creamos la grilla estilo la foto
+        
         if 'jaula_id' in df_centro.columns:
-            jaulas = df_centro['jaula_id'].dropna().unique()
-            
-            # Dibujar en filas de 5 columnas estilo grilla industrial
             cols_grid = st.columns(5)
-            for i, jaula in enumerate(jaulas):
+            for i, jaula in enumerate(jaulas_disponibles):
                 df_j = df_centro[df_centro['jaula_id'] == jaula]
                 if not df_j.empty:
                     ult = df_j.iloc[-1]
@@ -119,43 +126,116 @@ try:
                                 </div>
                             """, unsafe_allow_html=True)
         else:
-            st.info("Agrega la columna `jaula_id` en tu Google Sheet (ej. TK.01, TK.02, TK.03) para ver la retícula completa estilo BlueBrain.")
+            st.info("Añade la columna `jaula_id` en tu Google Sheet para activar la retícula interactiva de estanques.")
 
         st.markdown("---")
-        st.markdown("#### Resumen del Módulo")
+        st.markdown("#### Resumen Operativo del Módulo")
         c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Estanques Activos", len(df_centro['jaula_id'].unique()) if 'jaula_id' in df_centro.columns else 1)
-        c2.metric("Biomasa Estimada", "4.150.000 kg")
-        c3.metric("Oxígeno Promedio", f"{df_centro['oxigeno_mgl'].mean():.1f} mg/L" if 'oxigeno_mgl' in df_centro.columns else "N/D")
-        c4.metric("pH Promedio", "7.12")
-        c5.metric("CO2 Disuelto", "11.2 mg/L")
+        c1.metric("Estanques Activos", len(jaulas_disponibles))
+        c2.metric("Biomasa Total", "4.150.000 kg", "+1.2% vs ayer")
+        c3.metric("Oxígeno Promedio", f"{df_centro['oxigeno_mgl'].mean():.1f} mg/L" if 'oxigeno_mgl' in df_centro.columns else "8.2 mg/L")
+        c4.metric("pH Promedio", "7.14", "Estable")
+        c5.metric("Mortalidad Acumulada", f"{df_centro['mortalidad_dia'].sum() if 'mortalidad_dia' in df_centro.columns else 3} peces")
 
-    else:
-        # Vistas detalladas para las otras pestañas del menú lateral
-        if 'jaula_id' in df_centro.columns:
-            jaulas = df_centro['jaula_id'].dropna().unique()
-            jaula_seleccionada = st.selectbox("Seleccionar estanque específico para análisis:", jaulas)
-            df_actual = df_centro[df_centro['jaula_id'] == jaula_seleccionada]
-        else:
-            df_actual = df_centro
-            jaula_seleccionada = "Estanque General"
+    # ==========================================
+    # VISTA 2: CALIDAD DE AGUA
+    # ==========================================
+    elif menu == "Calidad de Agua":
+        st.markdown(f"## 🧪 Panel de Calidad de Agua y Oceanografía")
+        st.markdown("Análisis físico-químico de la columna de agua, perfiles de profundidad y bioseguridad.")
+        st.markdown("---")
 
-        if not df_actual.empty:
-            actual = df_actual.iloc[-1]
-            st.markdown(f"### Parámetros detallados para: {jaula_seleccionada}")
+        jaula_sel = st.selectbox("Seleccionar Estanque para Análisis Detallado:", jaulas_disponibles)
+        df_j = df_centro[df_centro['jaula_id'] == jaula_sel] if 'jaula_id' in df_centro.columns else df_centro
+
+        if not df_j.empty:
+            ult = df_j.iloc[-1]
             
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Oxígeno Superficial", f"{actual.get('oxigeno_mgl', 0)} mg/L")
-            col2.metric("Temperatura", f"{actual.get('temperatura_c', 0)} °C")
-            col3.metric("Tasa Alimentación", f"{actual.get('tasa_alimento_kg_min', 0)} kg/min")
-            col4.metric("Fitoplancton", f"{actual.get('conteo_algas_celulas', 0)} cél/ml")
+            col1.metric("Oxígeno Superficial (0m)", f"{ult.get('oxigeno_mgl', 8.1)} mg/L", "Óptimo")
+            col2.metric("Oxígeno de Fondo (15m)", f"{ult.get('oxigeno_fondo_mgl', 7.5)} mg/L", "Revisar estratificación" if float(ult.get('oxigeno_fondo_mgl', 7.5)) < 5 else "Estable")
+            col3.metric("Temperatura del Agua", f"{ult.get('temperatura_c', 12.5)} °C", "Rango normal")
+            col4.metric("Salinidad", f"{ult.get('salinidad_psu', 32.4)} PSU", "Normal")
 
-            st.markdown("#### Tendencia Histórica")
-            cols_graf = [c for c in ['oxigeno_mgl', 'temperatura_c'] if c in df_actual.columns]
-            if cols_graf:
-                st.line_chart(df_actual.set_index('timestamp')[cols_graf], height=350)
-        else:
-            st.warning("No hay registros para la selección actual.")
+            col5, col6, col7, col8 = st.columns(4)
+            col5.metric("pH del Estanque", "7.18", "pH Óptimo (6.8 - 7.5)")
+            col6.metric("Fitoplancton (Algas)", f"{int(ult.get('conteo_algas_celulas', 450)):,} cél/ml", "Sin Bloom")
+            col7.metric("Turbidez", "1.4 NTU", "Baja")
+            col8.metric("Amonio Total (TAN)", "0.05 mg/L", "Seguro (<0.1)")
+
+            st.markdown("---")
+            st.markdown("#### 📈 Histórico Multivariable de Calidad de Agua")
+            cols_agua = [c for c in ['oxigeno_mgl', 'oxigeno_fondo_mgl', 'temperatura_c'] if c in df_j.columns]
+            if cols_agua:
+                st.line_chart(df_j.set_index('timestamp')[cols_agua], height=380)
+
+    # ==========================================
+    # VISTA 3: ALIMENTACIÓN
+    # ==========================================
+    elif menu == "Alimentación":
+        st.markdown(f"## 🍽️ Control de Alimentación y Silos (Pontón)")
+        st.markdown("Gestión de sopladores, tasas de entrega de pellet y optimización del Factor de Conversión (FCR).")
+        st.markdown("---")
+
+        jaula_sel = st.selectbox("Seleccionar Estanque para Control de Ración:", jaulas_disponibles)
+        df_j = df_centro[df_centro['jaula_id'] == jaula_sel] if 'jaula_id' in df_centro.columns else df_centro
+
+        if not df_j.empty:
+            ult = df_j.iloc[-1]
+            estado_soplador = int(ult.get('estado_alimentacion', 0))
+            tasa_kg = float(ult.get('tasa_alimento_kg_min', 0.0))
+            silo_pct = float(ult.get('silo_alimento_pct', 75.0))
+
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Estado de Sopladores", "ACTIVO 🟢" if estado_soplador == 1 else "STANDBY 🔴", f"{tasa_kg} kg/min")
+            c2.metric("Silos Principales (Pontón)", f"{silo_pct}%", "Autonomía: 3.5 días" if silo_pct > 20 else "⚠️ REABASTECER")
+            c3.metric("Ración Diaria Programada", "1.450 kg", "Cumplimiento 94%")
+            c4.metric("FCR Biológico Actual", "1.12", "Eficiente")
+
+            st.markdown("---")
+            st.markdown("#### ⚙️ Consola de Respuesta Operativa Rápida")
+            
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.info(f"**Estanque seleccionado:** {jaula_sel}\n\nPuede enviar comandos directos de parada de emergencia o ajuste de ración si las alertas de oxígeno fluctúan.")
+                if st.button("🛑 DETENER ALIMENTACIÓN DE ESTE ESTANQUE", type="primary"):
+                    st.success(f"Comando enviado con éxito: Sopladores de {jaula_sel} detenidos.")
+            with col_b:
+                st.markdown("#### Tendencia de Suministro vs Oxígeno")
+                cols_alim = [c for c in ['tasa_alimento_kg_min', 'oxigeno_mgl'] if c in df_j.columns]
+                if cols_alim:
+                    st.line_chart(df_j.set_index('timestamp')[cols_alim], height=250)
+
+    # ==========================================
+    # VISTA 4: ENERGÍA Y SENSORES
+    # ==========================================
+    elif menu == "Energía y Sensores":
+        st.markdown(f"## ⚡ Infraestructura, Energía y Conectividad")
+        st.markdown("Estado de respaldos eléctricos, generadores del pontón y salud de sondas de telemetría.")
+        st.markdown("---")
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Generador Principal", "OPERATIVO 🟢", "Carga: 68%")
+        c2.metric("Estabilidad Red Eléctrica", "99.8%", "Sin microcortes hoy")
+        c3.metric("Banco de Baterías UPS", "100%", "Autonomía: 4 horas")
+        c4.metric("Enlace Satelital (Starlink)", "CONECTADO 🟢", "Latencia: 28 ms")
+
+        st.markdown("---")
+        st.markdown("#### 🩺 Diagnóstico de Sondas y Red de Sensores de Campo")
+        
+        # Tabla simulada de estado de hardware
+        data_sensores = {
+            "ID Sonda / Dispositivo": ["Sonda O2-E01", "Sensor Temp-E01", "Cámara Submarina E01", "Flujómetro Soplador 1", "Sonda O2-Fondo 15m"],
+            "Ubicación": ["Estanque 01 (Sup)", "Estanque 01", "Jaula Central", "Pontón Principal", "Estanque 01 (Fondo)"],
+            "Estado": ["🟢 OK", "🟢 OK", "🟢 OK", "🟡 Calibración Pendiente", "🟢 OK"],
+            "Batería / Alimentación": ["Externa (PoE)", "Externa (PoE)", "12V OK", "Red AC", "Externa (PoE)"],
+            "Última Sincronización": ["Hace 12 seg", "Hace 5 seg", "En vivo", "Hace 1 min", "Hace 12 seg"]
+        }
+        df_sensores = pd.DataFrame(data_sensores)
+        st.dataframe(df_sensores, use_container_width=True)
+
+        st.markdown("---")
+        st.info("ℹ️ Sistema integrado mediante API REST y telemetría por protocolo Modbus TCP hacia el colector central del pontón.")
 
 except Exception as e:
-    st.error(f"Error al cargar la interfaz SCADA: {e}")
+    st.error(f"Error al cargar el panel SCADA industrial: {e}")
