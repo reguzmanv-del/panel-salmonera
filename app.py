@@ -33,7 +33,7 @@ try:
     # Usamos el modelo exigido por la API pero con menor temperatura para acelerar la respuesta
     modelo_ia = genai.GenerativeModel(
         model_name='gemini-3.6-flash',
-        generation_config={"temperature": 0.2, "max_output_tokens": 300}
+        generation_config={"temperature": 0.2}
     )
     ia_disponible = True
 except Exception as e:
