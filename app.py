@@ -3,11 +3,20 @@ import pandas as pd
 import requests
 
 # ==========================================
-# 1. CONFIGURACIÓN Y ESTILOS UI/UX MODERNOS
+# 1. CONFIGURACIÓN Y ESTADO DE SESIÓN (Memoria)
 # ==========================================
-st.set_page_config(page_title="BlueBrain SCADA | V4.0", page_icon="🌐", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="BlueBrain SCADA | V5.0", page_icon="🌐", layout="wide", initial_sidebar_state="auto")
 
-# Catálogo Maestro de Dietas (Base de Datos Interna Simulada)
+# Inicializar variables de sesión (Para navegación y base de datos local)
+if 'nav_menu' not in st.session_state:
+    st.session_state.nav_menu = "Vista General"
+if 'dietas_asignadas' not in st.session_state:
+    st.session_state.dietas_asignadas = {}
+
+def ir_a_alimentacion():
+    st.session_state.nav_menu = "Alimentación"
+
+# Catálogo Maestro de Dietas
 catalogo_dietas = {
     "Biriwuin Alta Energía 12mm": {
         "fabricante": "Biriwuin Aqua", "tipo": "Engorda Rápida", 
@@ -26,11 +35,13 @@ catalogo_dietas = {
     }
 }
 
+# ==========================================
+# 2. ESTILOS UI/UX SCADA
+# ==========================================
 estilo_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500&display=swap');
     
-    /* Fondo oscuro moderno con MARCA DE AGUA MUY SUTIL */
     [data-testid="stAppViewContainer"] { 
         background-image: 
             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(56, 189, 248, 0.02)' stroke-width='0.15' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z'/%3E%3Cpath d='M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z'/%3E%3Cpath d='M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4'/%3E%3C/svg%3E"),
@@ -42,74 +53,30 @@ estilo_css = """
         color: #e2e8f0; 
     }
     
-    /* ========================================================= */
-    /* FIX EXTREMO PARA EL BOTÓN DE MENÚ EN MÓVILES              */
-    /* ========================================================= */
-    header[data-testid="stHeader"] { 
-        background: rgba(11, 15, 25, 0.95) !important; 
-        border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
-    }
+    header[data-testid="stHeader"] { background: rgba(11, 15, 25, 0.95) !important; border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important; }
+    header[data-testid="stHeader"] button, header[data-testid="stHeader"] svg, header[data-testid="stHeader"] span { color: #38bdf8 !important; fill: #38bdf8 !important; stroke: #38bdf8 !important; }
     
-    /* Forzar que todos los iconos y botones en el header sean celestes */
-    header[data-testid="stHeader"] button, 
-    header[data-testid="stHeader"] svg, 
-    header[data-testid="stHeader"] span {
-        color: #38bdf8 !important;
-        fill: #38bdf8 !important;
-        stroke: #38bdf8 !important;
-    }
-    
-    /* Darle forma de botón táctil */
     [data-testid="collapsedControl"] {
-        background-color: #111827 !important;
-        border: 1px solid #38bdf8 !important;
-        border-radius: 8px !important;
-        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
-        margin-top: 5px !important;
-        margin-left: 5px !important;
+        background-color: #111827 !important; border: 1px solid #38bdf8 !important; border-radius: 8px !important;
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important; margin-top: 5px !important; margin-left: 5px !important;
     }
-    /* ========================================================= */
     
-    /* Tipografías SCADA */
     h1, h2, h3, h4 { font-family: 'Rajdhani', sans-serif !important; color: #f8fafc !important; }
     
     .gradient-text {
-        background: linear-gradient(45deg, #38bdf8, #34d399);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 700;
-        font-size: 2.2rem;
-        margin-bottom: 5px;
+        background: linear-gradient(45deg, #38bdf8, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        font-weight: 700; font-size: 2.2rem; margin-bottom: 5px;
     }
 
-    .stMetric { 
-        background: rgba(17, 24, 39, 0.6) !important;
-        backdrop-filter: blur(10px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-radius: 12px !important; 
-        padding: 15px !important;
-    }
+    .stMetric { background: rgba(17, 24, 39, 0.6) !important; backdrop-filter: blur(10px) !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; border-radius: 12px !important; padding: 15px !important; }
     [data-testid="stMetricValue"] { color: #ffffff !important; font-family: 'Rajdhani', sans-serif !important; font-weight: 700 !important;}
 
-    .grid-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-        gap: 15px;
-        margin-top: 15px;
-        margin-bottom: 25px;
-    }
-    .tank-card {
-        background: rgba(17, 24, 39, 0.7);
-        backdrop-filter: blur(8px);
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    }
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-top: 15px; margin-bottom: 25px; }
+    .tank-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(8px); border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); }
     
     .status-ok { border: 1px solid rgba(16, 185, 129, 0.3); border-top: 4px solid #10b981; }
     .status-warning { border: 1px solid rgba(245, 158, 11, 0.3); border-top: 4px solid #f59e0b; }
-    .status-alert { border: 1px solid rgba(239, 68, 68, 0.5); border-top: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); }
+    .status-alert { border: 1px solid rgba(239, 68, 68, 0.5); border-top: 4px solid #ef4444; background: rgba(239, 68, 68, 0.1); }
     
     .t-title { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: bold; color: white; margin-bottom: 8px; }
     .t-data { font-size: 0.85rem; color: #9ca3af; margin: 3px 0; font-family: 'Inter', sans-serif;}
@@ -121,7 +88,7 @@ estilo_css = """
 st.markdown(estilo_css, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CONEXIONES A DATOS
+# 3. CONEXIONES A DATOS
 # ==========================================
 SHEET_URL = "https://docs.google.com/spreadsheets/d/115BG0pdWQxVlLVozHzI_ken4P0El_fZar_GTu3cRsus/export?format=csv"
 
@@ -146,30 +113,65 @@ try:
         if col in df.columns: df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
     df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
 
-    # ==========================================
-    # 3. MENÚ DE NAVEGACIÓN
-    # ==========================================
-    st.sidebar.markdown("### 🌐 BlueBrain OS")
-    st.sidebar.markdown("---")
-    menu = st.sidebar.radio("Navegación", [
-        "Vista General", 
-        "Calidad de Agua", 
-        "Alimentación", 
-        "Gestión de Dietas",
-        "Meteorología y Corrientes", 
-        "Energía y Sensores"
-    ])
-    st.sidebar.markdown("---")
-    
     centros = df['centro_id'].dropna().unique() if 'centro_id' in df.columns else ["Pontón Alfa"]
     centro_sel = st.sidebar.selectbox("Centro Activo", centros)
     df_c = df[df['centro_id'] == centro_sel] if 'centro_id' in df.columns else df
     jaulas_disp = df_c['jaula_id'].dropna().unique() if 'jaula_id' in df_c.columns else ["TK.01"]
 
     # ==========================================
-    # VISTA 1: GENERAL (Dashboard Ejecutivo)
+    # 4. MOTOR GLOBAL DE REGLAS DURAS (Failsafe)
     # ==========================================
-    if menu == "Vista General":
+    alertas_globales = []
+    
+    if 'jaula_id' in df_c.columns:
+        for jaula in jaulas_disp:
+            df_j = df_c[df_c['jaula_id'] == jaula]
+            if not df_j.empty:
+                ult = df_j.iloc[-1]
+                o2 = float(ult.get('oxigeno_mgl', 8.0))
+                temp = float(ult.get('temperatura_c', 12.0))
+                estado_alim = int(ult.get('estado_alimentacion', 0))
+                
+                # Rescatamos la dieta asignada o aplicamos la estándar por defecto
+                dieta_actual = st.session_state.dietas_asignadas.get(jaula, "OceanGrowth Estándar")
+                factor_riesgo = catalogo_dietas[dieta_actual]['factor_riesgo']
+                
+                # Regla 1: Asfixia inminente absoluta
+                if o2 < 4.2 and estado_alim == 1:
+                    alertas_globales.append(f"CRÍTICO: Oxígeno en nivel letal ({o2} mg/L) en **{jaula}**. Sopladores activos.")
+                
+                # Regla 2: Riesgo cruzado por dieta (SDA)
+                elif o2 < 5.0 and factor_riesgo >= 1.4 and estado_alim == 1:
+                    alertas_globales.append(f"PELIGRO (SDA): **{jaula}** con O2 marginal ({o2} mg/L) no soporta digestión de dieta Alta Energía.")
+
+    # 4.1 Despliegue del Banner Global de Alerta
+    if alertas_globales and st.session_state.nav_menu != "Alimentación":
+        st.markdown(f"""
+        <div style="background-color: rgba(239, 68, 68, 0.15); border: 2px solid #ef4444; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+            <h3 style="color: #ef4444; margin-top: 0; font-family: 'Rajdhani', sans-serif;">🚨 ALERTA DEL SISTEMA HARD-RULES (FAILSAFE)</h3>
+            <ul style="color: #f8fafc; font-family: 'Inter', sans-serif;">
+                {''.join([f"<li>{alerta}</li>" for alerta in alertas_globales])}
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("🔴 ABRIR CONSOLA TÁCTICA DE ALIMENTACIÓN", on_click=ir_a_alimentacion, type="primary", use_container_width=True)
+        st.markdown("---")
+
+    # ==========================================
+    # 5. MENÚ DE NAVEGACIÓN CONTROLADO
+    # ==========================================
+    st.sidebar.markdown("### 🌐 BlueBrain OS")
+    st.sidebar.markdown("---")
+    
+    # Vinculamos el radio button al session_state
+    opciones_menu = ["Vista General", "Calidad de Agua", "Alimentación", "Gestión de Dietas", "Meteorología y Corrientes", "Energía y Sensores"]
+    menu = st.sidebar.radio("Navegación", opciones_menu, index=opciones_menu.index(st.session_state.nav_menu), key="nav_menu")
+    st.sidebar.markdown("---")
+
+    # ==========================================
+    # VISTA 1: GENERAL
+    # ==========================================
+    if st.session_state.nav_menu == "Vista General":
         st.markdown(f'<div class="gradient-text">Panel Ejecutivo: {centro_sel}</div>', unsafe_allow_html=True)
         st.markdown("<span style='color: #34d399;'>●</span> Sistema Operativo | Estuario del Reloncaví", unsafe_allow_html=True)
         st.markdown("---")
@@ -181,7 +183,6 @@ try:
         c4.metric("Eficiencia FCR", "1.12", "Óptimo")
 
         st.markdown("#### 🗺️ Matriz Operacional en Tiempo Real")
-        
         if 'jaula_id' in df_c.columns:
             html_grid = '<div class="grid-container">'
             for jaula in jaulas_disp:
@@ -201,11 +202,11 @@ try:
     # ==========================================
     # VISTA 2: CALIDAD DE AGUA
     # ==========================================
-    elif menu == "Calidad de Agua":
+    elif st.session_state.nav_menu == "Calidad de Agua":
         st.markdown('<div class="gradient-text">Calidad de Agua y Oceanografía</div>', unsafe_allow_html=True)
         st.markdown("---")
         
-        st.markdown("#### 🦠 Semáforo de Bioseguridad (Todos los Estanques)")
+        st.markdown("#### 🦠 Semáforo de Bioseguridad")
         if 'jaula_id' in df_c.columns:
             html_grid = '<div class="grid-container">'
             for jaula in jaulas_disp:
@@ -216,16 +217,15 @@ try:
                     algas = int(ult.get('conteo_algas_celulas', 500))
                     
                     if o2_fon < 4.5 or algas > 2500:
-                        html_grid += f'<div class="tank-card status-alert"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-alert">{o2_fon} mg/L</span></p><p class="t-data">Algas: <span class="c-alert">{algas}</span></p></div>'
+                        html_grid += f'<div class="tank-card status-alert"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-alert">{o2_fon}</span></p><p class="t-data">Algas: <span class="c-alert">{algas}</span></p></div>'
                     elif o2_fon < 6.0 or algas > 1500:
-                        html_grid += f'<div class="tank-card status-warning"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-warn">{o2_fon} mg/L</span></p><p class="t-data">Algas: <span class="c-warn">{algas}</span></p></div>'
+                        html_grid += f'<div class="tank-card status-warning"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-warn">{o2_fon}</span></p><p class="t-data">Algas: <span class="c-warn">{algas}</span></p></div>'
                     else:
-                        html_grid += f'<div class="tank-card status-ok"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-ok">{o2_fon} mg/L</span></p><p class="t-data">Algas: <span class="c-ok">{algas}</span></p></div>'
+                        html_grid += f'<div class="tank-card status-ok"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-ok">{o2_fon}</span></p><p class="t-data">Algas: <span class="c-ok">{algas}</span></p></div>'
             html_grid += '</div>'
             st.markdown(html_grid, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("#### 🔬 Análisis Químico Detallado")
         jaula_sel = st.selectbox("Seleccionar estanque:", jaulas_disp, key="agua_sel")
         df_j = df_c[df_c['jaula_id'] == jaula_sel] if 'jaula_id' in df_c.columns else df_c
         
@@ -239,128 +239,107 @@ try:
             st.line_chart(df_j.set_index('timestamp')[['oxigeno_mgl', 'oxigeno_fondo_mgl']], height=300)
 
     # ==========================================
-    # VISTA 3: ALIMENTACIÓN
+    # VISTA 3: CONSOLA TÁCTICA (ALIMENTACIÓN + IA)
     # ==========================================
-    elif menu == "Alimentación":
-        st.markdown('<div class="gradient-text">Sistemas de Alimentación Automática</div>', unsafe_allow_html=True)
+    elif st.session_state.nav_menu == "Alimentación":
+        st.markdown('<div class="gradient-text">Consola Táctica de Alimentación</div>', unsafe_allow_html=True)
         st.markdown("---")
         
-        st.markdown("#### ⚙️ Estado de Sopladores (Todos los Estanques)")
-        if 'jaula_id' in df_c.columns:
-            html_grid = '<div class="grid-container">'
-            for jaula in jaulas_disp:
-                df_j = df_c[df_c['jaula_id'] == jaula]
-                if not df_j.empty:
-                    ult = df_j.iloc[-1]
-                    estado = int(ult.get('estado_alimentacion', 0))
-                    tasa = float(ult.get('tasa_alimento_kg_min', 0))
-                    
-                    if estado == 1:
-                        html_grid += f'<div class="tank-card status-ok"><div class="t-title">{jaula}</div><p class="t-data">Estado: <span class="c-ok">Activo 🟢</span></p><p class="t-data">Tasa: <span style="color:white;">{tasa} kg/m</span></p></div>'
-                    else:
-                        html_grid += f'<div class="tank-card status-warning"><div class="t-title">{jaula}</div><p class="t-data">Estado: <span class="c-warn">Pausado ⏸️</span></p><p class="t-data">Tasa: <span style="color:white;">0.0 kg/m</span></p></div>'
-            html_grid += '</div>'
-            st.markdown(html_grid, unsafe_allow_html=True)
+        # EL COPILOTO IA (GEMS)
+        st.markdown("#### 🧠 BlueBrain Copilot (Motor de Análisis Biológico)")
+        
+        if alertas_globales:
+            st.markdown(f"""
+            <div style="background: rgba(239, 68, 68, 0.1); border-left: 5px solid #ef4444; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                <span style="color:#ef4444; font-weight:bold;">⚡ INTERVENCIÓN DEL FAILSAFE (Reglas Duras Activas):</span><br>
+                El motor predictivo ha sido anulado por umbrales críticos de supervivencia. Ejecute el corte de sopladores inmediatamente en los estanques afectados.
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="background: rgba(16, 185, 129, 0.05); border-left: 5px solid #34d399; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                <span style="color:#34d399; font-weight:bold;">✨ IA Copilot Conectado (Contexto Normal):</span><br>
+                Tendencia de oxígeno estable en módulo. SDA (Demanda Dinámica) cubierta por corrientes actuales. Sugerencia: Mantener perfiles de entrega programados para optimización de FCR.
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("#### 🎛️ Consola de Control Individual")
-        jaula_sel = st.selectbox("Seleccionar estanque:", jaulas_disp, key="alim_sel")
+        st.markdown("#### 🎛️ Tablero de Sopladores")
+        jaula_sel = st.selectbox("Seleccionar estanque a intervenir:", jaulas_disp, key="alim_sel")
         df_j = df_c[df_c['jaula_id'] == jaula_sel] if 'jaula_id' in df_c.columns else df_c
         
         if not df_j.empty:
             ult = df_j.iloc[-1]
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Estado del Soplador", "ACTIVO 🟢" if int(ult.get('estado_alimentacion', 0))==1 else "DETENIDO 🔴")
-            c2.metric("Tasa de Entrega", f"{ult.get('tasa_alimento_kg_min', 0)} kg/min")
-            c3.metric("Silos Pontón", f"{ult.get('silo_alimento_pct', 0)}%")
+            dieta = st.session_state.dietas_asignadas.get(jaula_sel, "OceanGrowth Estándar")
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Soplador", "ACTIVO 🟢" if int(ult.get('estado_alimentacion', 0))==1 else "DETENIDO 🔴")
+            c2.metric("Tasa (kg/min)", f"{ult.get('tasa_alimento_kg_min', 0)}")
+            c3.metric("O2 Actual", f"{ult.get('oxigeno_mgl', 0)} mg/L")
+            c4.metric("Dieta en curso", dieta)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button(f"🛑 CORTAR ALIMENTACIÓN EN {jaula_sel}", type="primary", use_container_width=True):
-                st.success(f"Comando de emergencia enviado a los dosificadores de {jaula_sel}.")
+            col_bt1, col_bt2 = st.columns(2)
+            with col_bt1:
+                if st.button(f"🛑 DETENER ALIMENTACIÓN - {jaula_sel}", type="primary", use_container_width=True):
+                    st.success(f"Comando enviado. Sopladores apagados en {jaula_sel}.")
+            with col_bt2:
+                if st.button("🔽 Reducir tasa al 50%", use_container_width=True):
+                    st.info(f"Tasa reducida para digestión (SDA) controlada en {jaula_sel}.")
 
     # ==========================================
     # VISTA 4: GESTIÓN DE DIETAS
     # ==========================================
-    elif menu == "Gestión de Dietas":
-        st.markdown('<div class="gradient-text">Configuración Nutricional y Asignación</div>', unsafe_allow_html=True)
-        st.markdown("Asigna perfiles nutricionales a los estanques para ajustar automáticamente los algoritmos de riesgo (SDA).")
+    elif st.session_state.nav_menu == "Gestión de Dietas":
+        st.markdown('<div class="gradient-text">Configuración Nutricional</div>', unsafe_allow_html=True)
+        st.markdown("Asigna matrices nutricionales. El Motor de Reglas y la IA usarán estos datos para calcular el riesgo.")
         st.markdown("---")
 
         col_form, col_info = st.columns([1, 1])
 
         with col_form:
-            st.markdown("#### 📝 Panel de Asignación por Estanque")
-            jaula_config = st.selectbox("Seleccione el estanque a configurar:", jaulas_disp)
-            dieta_seleccionada = st.selectbox("Seleccione la matriz nutricional del silo:", list(catalogo_dietas.keys()))
+            st.markdown("#### 📝 Asignación en Silos")
+            jaula_config = st.selectbox("Estanque:", jaulas_disp)
+            dieta_seleccionada = st.selectbox("Dieta:", list(catalogo_dietas.keys()))
             
-            st.markdown("<br>", unsafe_allow_html=True)
             if st.button(f"💾 Guardar Asignación en {jaula_config}", type="primary", use_container_width=True):
-                st.success(f"¡Dieta '{dieta_seleccionada}' asignada correctamente al estanque {jaula_config}!")
-                st.info("Los algoritmos de Reglas Duras y la IA ahora usarán esta matriz para calcular el riesgo de hipoxia.")
+                # Guardamos en la memoria de la sesión
+                st.session_state.dietas_asignadas[jaula_config] = dieta_seleccionada
+                st.success(f"¡{dieta_seleccionada} asignada a {jaula_config}!")
+                st.info("Algoritmos de riesgo re-calibrados exitosamente.")
 
         with col_info:
-            st.markdown("#### 🔬 Ficha Técnica de la Dieta")
+            st.markdown("#### 🔬 Ficha de la Dieta")
             ficha = catalogo_dietas[dieta_seleccionada]
-            
             st.markdown(f"""
             <div style="background: rgba(17, 24, 39, 0.7); padding: 20px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.3);">
                 <h3 style="margin-top:0; color:#38bdf8;">{dieta_seleccionada}</h3>
-                <p><strong>Fabricante:</strong> {ficha['fabricante']}</p>
-                <p><strong>Tipo de Estrategia:</strong> {ficha['tipo']}</p>
-                <hr style="border-color: rgba(255,255,255,0.1);">
-                <p><strong>Proteína Bruta:</strong> {ficha['proteina']}</p>
-                <p><strong>Lípidos (Grasas):</strong> <span style="color:#f59e0b; font-weight:bold;">{ficha['lipidos']}</span></p>
-                <p><strong>Energía Digestible:</strong> {ficha['energia_digestible']}</p>
-                <hr style="border-color: rgba(255,255,255,0.1);">
-                <p><strong>Demanda Metabólica de O2 (SDA):</strong> 
-                    <span style="color:{'#ef4444' if ficha['demanda_o2'] == 'ALTA' else '#10b981'}; font-weight:bold;">
-                        {ficha['demanda_o2']} (Modificador x{ficha['factor_riesgo']})
-                    </span>
-                </p>
+                <p><strong>Factor de Riesgo SDA:</strong> <span style="color:{'#ef4444' if ficha['demanda_o2'] == 'ALTA' else '#10b981'}; font-weight:bold;">x{ficha['factor_riesgo']}</span></p>
+                <p><strong>Lípidos:</strong> {ficha['lipidos']} | <strong>Proteína:</strong> {ficha['proteina']}</p>
             </div>
             """, unsafe_allow_html=True)
 
     # ==========================================
-    # VISTA 5: METEOROLOGÍA Y CORRIENTES
+    # VISTAS RESTANTES: METEO Y ENERGÍA
     # ==========================================
-    elif menu == "Meteorología y Corrientes":
+    elif st.session_state.nav_menu == "Meteorología y Corrientes":
         st.markdown('<div class="gradient-text">Entorno Atmosférico y Oceanográfico</div>', unsafe_allow_html=True)
         st.markdown("---")
-        
         clima = obtener_clima_reloncavi()
         if clima:
-            st.markdown("#### 📡 Enlace Satelital Open-Meteo (Cochamó)")
             c1, c2, c3, c4 = st.columns(4)
-            viento_nudos = round(clima.get('wind_speed_10m', 0) * 1.94384, 1)
-            rafaga_nudos = round(clima.get('wind_gusts_10m', 0) * 1.94384, 1)
-            
             c1.metric("Temp Ambiente", f"{clima.get('temperature_2m', '--')} °C")
-            c2.metric("Viento Sup.", f"{viento_nudos} nudos")
-            c3.metric("Ráfagas Max", f"{rafaga_nudos} nudos", "⚠️ Temporal" if rafaga_nudos > 25 else "Normal", delta_color="inverse" if rafaga_nudos > 25 else "off")
-            c4.metric("Presión hPa", f"{clima.get('surface_pressure', '--')}")
-            
-            st.markdown("---")
-            st.markdown("#### 🌊 Oceanografía Física (Sensores Locales en Pontón)")
-            if not df_c.empty:
-                ult_local = df_c.iloc[-1]
-                corriente = float(ult_local.get('corriente_ms', 0.15))
-                salinidad = float(ult_local.get('salinidad_psu', 32.0))
-                
-                col_a, col_b, col_c = st.columns(3)
-                col_a.metric("Corriente (ADCP)", f"{round(corriente * 1.94384, 2)} nudos", "Carga Estructural OK")
-                col_b.metric("Salinidad", f"{salinidad} PSU", "Rango Estable")
-                col_c.metric("Oleaje Estimado", "0.6 m", "Condición Operable")
+            c2.metric("Viento", f"{round(clima.get('wind_speed_10m', 0) * 1.94384, 1)} nudos")
+            c3.metric("Ráfagas", f"{round(clima.get('wind_gusts_10m', 0) * 1.94384, 1)} nudos")
+            c4.metric("Presión", f"{clima.get('surface_pressure', '--')} hPa")
 
-    # ==========================================
-    # VISTA 6: ENERGÍA Y SENSORES
-    # ==========================================
-    elif menu == "Energía y Sensores":
-        st.markdown('<div class="gradient-text">Infraestructura y Hardware de Borde</div>', unsafe_allow_html=True)
+    elif st.session_state.nav_menu == "Energía y Sensores":
+        st.markdown('<div class="gradient-text">Infraestructura de Borde</div>', unsafe_allow_html=True)
         st.markdown("---")
         c1, c2, c3 = st.columns(3)
         c1.metric("Generador Principal", "OPERATIVO 🟢", "68% Carga")
         c2.metric("Enlace Starlink", "ONLINE 🟢", "28ms Latencia")
-        c3.metric("Banco UPS", "100%", "Autonomía Plena")
+        c3.metric("Banco UPS", "100%", "Autonomía")
 
 except Exception as e:
-    st.error(f"Error en el núcleo de renderizado SCADA: {e}")
+    st.error(f"Error en el núcleo SCADA: {e}")
