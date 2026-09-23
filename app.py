@@ -5,7 +5,26 @@ import requests
 # ==========================================
 # 1. CONFIGURACIÓN Y ESTILOS UI/UX MODERNOS
 # ==========================================
-st.set_page_config(page_title="BlueBrain SCADA | V3.0", page_icon="🌐", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="BlueBrain SCADA | V4.0", page_icon="🌐", layout="wide", initial_sidebar_state="auto")
+
+# Catálogo Maestro de Dietas (Base de Datos Interna Simulada)
+catalogo_dietas = {
+    "Biriwuin Alta Energía 12mm": {
+        "fabricante": "Biriwuin Aqua", "tipo": "Engorda Rápida", 
+        "proteina": "45%", "lipidos": "35%", "energia_digestible": "21.5 MJ/kg", 
+        "demanda_o2": "ALTA", "factor_riesgo": 1.4
+    },
+    "OceanGrowth Estándar": {
+        "fabricante": "OceanNutra", "tipo": "Mantención", 
+        "proteina": "42%", "lipidos": "28%", "energia_digestible": "19.0 MJ/kg", 
+        "demanda_o2": "NORMAL", "factor_riesgo": 1.0
+    },
+    "BioShield Funcional (Salud Branquial)": {
+        "fabricante": "PharmaFish", "tipo": "Medicado / Estrés", 
+        "proteina": "40%", "lipidos": "25%", "energia_digestible": "17.5 MJ/kg", 
+        "demanda_o2": "BAJA", "factor_riesgo": 0.8
+    }
+}
 
 estilo_css = """
 <style>
@@ -116,6 +135,7 @@ try:
         "Vista General", 
         "Calidad de Agua", 
         "Alimentación", 
+        "Gestión de Dietas",
         "Meteorología y Corrientes", 
         "Energía y Sensores"
     ])
@@ -239,7 +259,49 @@ try:
                 st.success(f"Comando de emergencia enviado a los dosificadores de {jaula_sel}.")
 
     # ==========================================
-    # VISTA 4: METEOROLOGÍA Y CORRIENTES
+    # VISTA 4: GESTIÓN DE DIETAS
+    # ==========================================
+    elif menu == "Gestión de Dietas":
+        st.markdown('<div class="gradient-text">Configuración Nutricional y Asignación</div>', unsafe_allow_html=True)
+        st.markdown("Asigna perfiles nutricionales a los estanques para ajustar automáticamente los algoritmos de riesgo (SDA).")
+        st.markdown("---")
+
+        col_form, col_info = st.columns([1, 1])
+
+        with col_form:
+            st.markdown("#### 📝 Panel de Asignación por Estanque")
+            jaula_config = st.selectbox("Seleccione el estanque a configurar:", jaulas_disp)
+            dieta_seleccionada = st.selectbox("Seleccione la matriz nutricional del silo:", list(catalogo_dietas.keys()))
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button(f"💾 Guardar Asignación en {jaula_config}", type="primary", use_container_width=True):
+                st.success(f"¡Dieta '{dieta_seleccionada}' asignada correctamente al estanque {jaula_config}!")
+                st.info("Los algoritmos de Reglas Duras y la IA ahora usarán esta matriz para calcular el riesgo de hipoxia.")
+
+        with col_info:
+            st.markdown("#### 🔬 Ficha Técnica de la Dieta")
+            ficha = catalogo_dietas[dieta_seleccionada]
+            
+            st.markdown(f"""
+            <div style="background: rgba(17, 24, 39, 0.7); padding: 20px; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                <h3 style="margin-top:0; color:#38bdf8;">{dieta_seleccionada}</h3>
+                <p><strong>Fabricante:</strong> {ficha['fabricante']}</p>
+                <p><strong>Tipo de Estrategia:</strong> {ficha['tipo']}</p>
+                <hr style="border-color: rgba(255,255,255,0.1);">
+                <p><strong>Proteína Bruta:</strong> {ficha['proteina']}</p>
+                <p><strong>Lípidos (Grasas):</strong> <span style="color:#f59e0b; font-weight:bold;">{ficha['lipidos']}</span></p>
+                <p><strong>Energía Digestible:</strong> {ficha['energia_digestible']}</p>
+                <hr style="border-color: rgba(255,255,255,0.1);">
+                <p><strong>Demanda Metabólica de O2 (SDA):</strong> 
+                    <span style="color:{'#ef4444' if ficha['demanda_o2'] == 'ALTA' else '#10b981'}; font-weight:bold;">
+                        {ficha['demanda_o2']} (Modificador x{ficha['factor_riesgo']})
+                    </span>
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # ==========================================
+    # VISTA 5: METEOROLOGÍA Y CORRIENTES
     # ==========================================
     elif menu == "Meteorología y Corrientes":
         st.markdown('<div class="gradient-text">Entorno Atmosférico y Oceanográfico</div>', unsafe_allow_html=True)
@@ -270,7 +332,7 @@ try:
                 col_c.metric("Oleaje Estimado", "0.6 m", "Condición Operable")
 
     # ==========================================
-    # VISTA 5: ENERGÍA Y SENSORES
+    # VISTA 6: ENERGÍA Y SENSORES
     # ==========================================
     elif menu == "Energía y Sensores":
         st.markdown('<div class="gradient-text">Infraestructura y Hardware de Borde</div>', unsafe_allow_html=True)
