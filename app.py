@@ -30,7 +30,7 @@ estilo_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500&display=swap');
     
-    /* Fondo oscuro moderno con MARCA DE AGUA MUY SUTIL (2% opacidad, trazo fino) */
+    /* Fondo oscuro moderno con MARCA DE AGUA MUY SUTIL */
     [data-testid="stAppViewContainer"] { 
         background-image: 
             url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(56, 189, 248, 0.02)' stroke-width='0.15' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z'/%3E%3Cpath d='M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z'/%3E%3Cpath d='M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4'/%3E%3C/svg%3E"),
@@ -42,12 +42,37 @@ estilo_css = """
         color: #e2e8f0; 
     }
     
-    [data-testid="stHeader"] { background: transparent; }
+    /* ========================================================= */
+    /* FIX EXTREMO PARA EL BOTÓN DE MENÚ EN MÓVILES              */
+    /* ========================================================= */
+    header[data-testid="stHeader"] { 
+        background: rgba(11, 15, 25, 0.95) !important; 
+        border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
+    }
+    
+    /* Forzar que todos los iconos y botones en el header sean celestes */
+    header[data-testid="stHeader"] button, 
+    header[data-testid="stHeader"] svg, 
+    header[data-testid="stHeader"] span {
+        color: #38bdf8 !important;
+        fill: #38bdf8 !important;
+        stroke: #38bdf8 !important;
+    }
+    
+    /* Darle forma de botón táctil */
+    [data-testid="collapsedControl"] {
+        background-color: #111827 !important;
+        border: 1px solid #38bdf8 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
+        margin-top: 5px !important;
+        margin-left: 5px !important;
+    }
+    /* ========================================================= */
     
     /* Tipografías SCADA */
     h1, h2, h3, h4 { font-family: 'Rajdhani', sans-serif !important; color: #f8fafc !important; }
     
-    /* Título con gradiente (Estilo Comercial) */
     .gradient-text {
         background: linear-gradient(45deg, #38bdf8, #34d399);
         -webkit-background-clip: text;
@@ -57,18 +82,15 @@ estilo_css = """
         margin-bottom: 5px;
     }
 
-    /* Tarjetas de Métricas tipo Glassmorphism */
     .stMetric { 
         background: rgba(17, 24, 39, 0.6) !important;
         backdrop-filter: blur(10px) !important;
-        -webkit-backdrop-filter: blur(10px) !important;
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
         border-radius: 12px !important; 
         padding: 15px !important;
     }
     [data-testid="stMetricValue"] { color: #ffffff !important; font-family: 'Rajdhani', sans-serif !important; font-weight: 700 !important;}
 
-    /* Grilla fluida para Celulares y Desktop */
     .grid-container {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -79,18 +101,16 @@ estilo_css = """
     .tank-card {
         background: rgba(17, 24, 39, 0.7);
         backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
         border-radius: 10px;
         padding: 15px;
         text-align: center;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
-    /* Colores de estado corporativos */
+    
     .status-ok { border: 1px solid rgba(16, 185, 129, 0.3); border-top: 4px solid #10b981; }
     .status-warning { border: 1px solid rgba(245, 158, 11, 0.3); border-top: 4px solid #f59e0b; }
     .status-alert { border: 1px solid rgba(239, 68, 68, 0.5); border-top: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); }
     
-    /* Textos internos de las tarjetas */
     .t-title { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: bold; color: white; margin-bottom: 8px; }
     .t-data { font-size: 0.85rem; color: #9ca3af; margin: 3px 0; font-family: 'Inter', sans-serif;}
     .c-ok { color: #34d399; font-weight: 600; }
