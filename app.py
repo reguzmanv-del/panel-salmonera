@@ -11,10 +11,10 @@ estilo_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500&display=swap');
     
-    /* Fondo oscuro moderno con MARCA DE AGUA (Cerebro BlueBrain) */
+    /* Fondo oscuro moderno con MARCA DE AGUA MUY SUTIL (2% opacidad, trazo fino) */
     [data-testid="stAppViewContainer"] { 
         background-image: 
-            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(56, 189, 248, 0.06)' stroke-width='0.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z'/%3E%3Cpath d='M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z'/%3E%3Cpath d='M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4'/%3E%3C/svg%3E"),
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(56, 189, 248, 0.02)' stroke-width='0.15' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z'/%3E%3Cpath d='M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z'/%3E%3Cpath d='M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4'/%3E%3C/svg%3E"),
             radial-gradient(circle at top right, #111827, #090d14);
         background-repeat: no-repeat, no-repeat;
         background-position: center center, center center;
@@ -38,7 +38,7 @@ estilo_css = """
         margin-bottom: 5px;
     }
 
-    /* Tarjetas de Métricas tipo Glassmorphism (Efecto Vidrio sobre la marca de agua) */
+    /* Tarjetas de Métricas tipo Glassmorphism */
     .stMetric { 
         background: rgba(17, 24, 39, 0.6) !important;
         backdrop-filter: blur(10px) !important;
