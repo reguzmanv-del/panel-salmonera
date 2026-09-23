@@ -24,7 +24,7 @@ def ir_a_alimentacion():
 # Configurar Gemini AI con manejo de errores inicial
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    modelo_ia = genai.GenerativeModel('gemini-1.5-flash')
+    modelo_ia = genai.GenerativeModel('gemini-pro')
     ia_disponible = True
 except Exception as e:
     ia_disponible = False
