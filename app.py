@@ -11,8 +11,18 @@ estilo_css = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500&display=swap');
     
-    /* Fondo oscuro moderno */
-    [data-testid="stAppViewContainer"] { background: #0b0f19; color: #e2e8f0; }
+    /* Fondo oscuro moderno con MARCA DE AGUA (Cerebro BlueBrain) */
+    [data-testid="stAppViewContainer"] { 
+        background-image: 
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(56, 189, 248, 0.06)' stroke-width='0.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z'/%3E%3Cpath d='M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z'/%3E%3Cpath d='M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4'/%3E%3C/svg%3E"),
+            radial-gradient(circle at top right, #111827, #090d14);
+        background-repeat: no-repeat, no-repeat;
+        background-position: center center, center center;
+        background-size: 55vw, cover;
+        background-attachment: fixed, fixed;
+        color: #e2e8f0; 
+    }
+    
     [data-testid="stHeader"] { background: transparent; }
     
     /* Tipografías SCADA */
@@ -28,9 +38,11 @@ estilo_css = """
         margin-bottom: 5px;
     }
 
-    /* Tarjetas de Métricas tipo Glassmorphism */
+    /* Tarjetas de Métricas tipo Glassmorphism (Efecto Vidrio sobre la marca de agua) */
     .stMetric { 
-        background: rgba(30, 41, 59, 0.4) !important; 
+        background: rgba(17, 24, 39, 0.6) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
         border-radius: 12px !important; 
         padding: 15px !important;
@@ -47,15 +59,17 @@ estilo_css = """
     }
     .tank-card {
         background: rgba(17, 24, 39, 0.7);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         border-radius: 10px;
         padding: 15px;
         text-align: center;
-        backdrop-filter: blur(5px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     }
     /* Colores de estado corporativos */
-    .status-ok { border: 1px solid #10b981; border-top: 4px solid #10b981; }
-    .status-warning { border: 1px solid #f59e0b; border-top: 4px solid #f59e0b; }
-    .status-alert { border: 1px solid #ef4444; border-top: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); }
+    .status-ok { border: 1px solid rgba(16, 185, 129, 0.3); border-top: 4px solid #10b981; }
+    .status-warning { border: 1px solid rgba(245, 158, 11, 0.3); border-top: 4px solid #f59e0b; }
+    .status-alert { border: 1px solid rgba(239, 68, 68, 0.5); border-top: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); }
     
     /* Textos internos de las tarjetas */
     .t-title { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: bold; color: white; margin-bottom: 8px; }
@@ -145,13 +159,12 @@ try:
             st.markdown(html_grid, unsafe_allow_html=True)
 
     # ==========================================
-    # VISTA 2: CALIDAD DE AGUA (Macro a Micro)
+    # VISTA 2: CALIDAD DE AGUA
     # ==========================================
     elif menu == "Calidad de Agua":
         st.markdown('<div class="gradient-text">Calidad de Agua y Oceanografía</div>', unsafe_allow_html=True)
         st.markdown("---")
         
-        # MACRO VISTA
         st.markdown("#### 🦠 Semáforo de Bioseguridad (Todos los Estanques)")
         if 'jaula_id' in df_c.columns:
             html_grid = '<div class="grid-container">'
@@ -172,8 +185,6 @@ try:
             st.markdown(html_grid, unsafe_allow_html=True)
 
         st.markdown("---")
-        
-        # MICRO VISTA
         st.markdown("#### 🔬 Análisis Químico Detallado")
         jaula_sel = st.selectbox("Seleccionar estanque:", jaulas_disp, key="agua_sel")
         df_j = df_c[df_c['jaula_id'] == jaula_sel] if 'jaula_id' in df_c.columns else df_c
@@ -188,13 +199,12 @@ try:
             st.line_chart(df_j.set_index('timestamp')[['oxigeno_mgl', 'oxigeno_fondo_mgl']], height=300)
 
     # ==========================================
-    # VISTA 3: ALIMENTACIÓN (Macro a Micro)
+    # VISTA 3: ALIMENTACIÓN
     # ==========================================
     elif menu == "Alimentación":
         st.markdown('<div class="gradient-text">Sistemas de Alimentación Automática</div>', unsafe_allow_html=True)
         st.markdown("---")
         
-        # MACRO VISTA
         st.markdown("#### ⚙️ Estado de Sopladores (Todos los Estanques)")
         if 'jaula_id' in df_c.columns:
             html_grid = '<div class="grid-container">'
@@ -213,8 +223,6 @@ try:
             st.markdown(html_grid, unsafe_allow_html=True)
 
         st.markdown("---")
-        
-        # MICRO VISTA
         st.markdown("#### 🎛️ Consola de Control Individual")
         jaula_sel = st.selectbox("Seleccionar estanque:", jaulas_disp, key="alim_sel")
         df_j = df_c[df_c['jaula_id'] == jaula_sel] if 'jaula_id' in df_c.columns else df_c
