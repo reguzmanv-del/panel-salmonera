@@ -22,10 +22,24 @@ def ir_a_alimentacion():
     st.session_state.nav_menu = "Alimentación"
 
 # Configurar Gemini AI con manejo de errores inicial
+# Configurar Gemini AI con Auto-Descubrimiento
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    modelo_ia = genai.GenerativeModel('gemini-pro')
-    ia_disponible = True
+    
+    # 1. Le preguntamos a Google qué modelos están habilitados para tu cuenta
+    modelo_habilitado = None
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            modelo_habilitado = m.name
+            if 'flash' in m.name: # Preferimos la versión más rápida si está disponible
+                break
+                
+    # 2. Inicializamos la IA con el modelo exacto que Google nos autorizó
+    if modelo_habilitado:
+        modelo_ia = genai.GenerativeModel(modelo_habilitado)
+        ia_disponible = True
+    else:
+        ia_disponible = False
 except Exception as e:
     ia_disponible = False
 
