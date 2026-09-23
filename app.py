@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import requests
-import pydeck as pdk
 
 # ==========================================
 # 1. CONFIGURACIÓN Y ESTILOS UI/UX MODERNOS
@@ -17,7 +16,7 @@ estilo_css = """
     [data-testid="stHeader"] { background: transparent; }
     
     /* Tipografías SCADA */
-    h1, h2, h3 { font-family: 'Rajdhani', sans-serif !important; color: #f8fafc !important; }
+    h1, h2, h3, h4 { font-family: 'Rajdhani', sans-serif !important; color: #f8fafc !important; }
     
     /* Título con gradiente (Estilo Comercial) */
     .gradient-text {
@@ -26,13 +25,13 @@ estilo_css = """
         -webkit-text-fill-color: transparent;
         font-weight: 700;
         font-size: 2.2rem;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
     }
 
     /* Tarjetas de Métricas tipo Glassmorphism */
     .stMetric { 
         background: rgba(30, 41, 59, 0.4) !important; 
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
         border-radius: 12px !important; 
         padding: 15px !important;
     }
@@ -44,23 +43,32 @@ estilo_css = """
         grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
         gap: 15px;
         margin-top: 15px;
+        margin-bottom: 25px;
     }
     .tank-card {
-        background: #111827;
+        background: rgba(17, 24, 39, 0.7);
         border-radius: 10px;
         padding: 15px;
         text-align: center;
+        backdrop-filter: blur(5px);
     }
-    .status-ok { border: 2px solid #10b981; }
-    .status-alert { border: 2px solid #ef4444; background: #1f1215; }
-    .t-title { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: bold; color: white; }
-    .t-data { font-size: 0.9rem; color: #9ca3af; margin: 3px 0; }
+    /* Colores de estado corporativos */
+    .status-ok { border: 1px solid #10b981; border-top: 4px solid #10b981; }
+    .status-warning { border: 1px solid #f59e0b; border-top: 4px solid #f59e0b; }
+    .status-alert { border: 1px solid #ef4444; border-top: 4px solid #ef4444; background: rgba(239, 68, 68, 0.05); }
+    
+    /* Textos internos de las tarjetas */
+    .t-title { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: bold; color: white; margin-bottom: 8px; }
+    .t-data { font-size: 0.85rem; color: #9ca3af; margin: 3px 0; font-family: 'Inter', sans-serif;}
+    .c-ok { color: #34d399; font-weight: 600; }
+    .c-warn { color: #fbbf24; font-weight: 600; }
+    .c-alert { color: #f87171; font-weight: 600; }
 </style>
 """
 st.markdown(estilo_css, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CONEXIONES A DATOS (G-Sheets y API)
+# 2. CONEXIONES A DATOS
 # ==========================================
 SHEET_URL = "https://docs.google.com/spreadsheets/d/115BG0pdWQxVlLVozHzI_ken4P0El_fZar_GTu3cRsus/export?format=csv"
 
@@ -80,7 +88,6 @@ def obtener_clima_reloncavi():
 
 try:
     df = cargar_datos()
-    # Limpieza numérica
     cols_numericas = ['oxigeno_mgl', 'oxigeno_fondo_mgl', 'temperatura_c', 'salinidad_psu', 'corriente_ms', 'estado_alimentacion', 'tasa_alimento_kg_min', 'conteo_algas_celulas', 'mortalidad_dia', 'silo_alimento_pct']
     for col in cols_numericas:
         if col in df.columns: df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
@@ -92,7 +99,7 @@ try:
     st.sidebar.markdown("### 🌐 BlueBrain OS")
     st.sidebar.markdown("---")
     menu = st.sidebar.radio("Navegación", [
-        "Vista General & Mapa", 
+        "Vista General", 
         "Calidad de Agua", 
         "Alimentación", 
         "Meteorología y Corrientes", 
@@ -106,46 +113,21 @@ try:
     jaulas_disp = df_c['jaula_id'].dropna().unique() if 'jaula_id' in df_c.columns else ["TK.01"]
 
     # ==========================================
-    # VISTA 1: GENERAL Y MAPA
+    # VISTA 1: GENERAL (Dashboard Ejecutivo)
     # ==========================================
-    if menu == "Vista General & Mapa":
-        st.markdown(f'<div class="gradient-text">Centro de Mando: {centro_sel}</div>', unsafe_allow_html=True)
+    if menu == "Vista General":
+        st.markdown(f'<div class="gradient-text">Panel Ejecutivo: {centro_sel}</div>', unsafe_allow_html=True)
+        st.markdown("<span style='color: #34d399;'>●</span> Sistema Operativo | Estuario del Reloncaví", unsafe_allow_html=True)
         st.markdown("---")
         
-        col_mapa, col_kpi = st.columns([2, 1])
-        
-        with col_mapa:
-            st.markdown("#### 🛰️ Mapa Operacional (Estuario del Reloncaví)")
-            # Datos geoespaciales para Cochamó / Reloncaví
-            map_data = pd.DataFrame({
-                'Nombre': ['Pontón Central', 'TK.01', 'TK.02', 'TK.03', 'TK.04', 'TK.05'],
-                'lat': [-41.4900, -41.4910, -41.4890, -41.4905, -41.4895, -41.4915],
-                'lon': [-72.3100, -72.3110, -72.3090, -72.3080, -72.3120, -72.3095],
-                'color': [[56, 189, 248, 255], [16, 185, 129, 200], [239, 68, 68, 255], [16, 185, 129, 200], [16, 185, 129, 200], [16, 185, 129, 200]],
-                'size': [120, 60, 80, 60, 60, 60]
-            })
-            
-            vista_mapa = pdk.ViewState(latitude=-41.4905, longitude=-72.3100, zoom=14.5, pitch=50)
-            capa = pdk.Layer(
-                'ScatterplotLayer',
-                data=map_data,
-                get_position='[lon, lat]',
-                get_fill_color='color',
-                get_radius='size',
-                pickable=True
-            )
-            st.pydeck_chart(pdk.Deck(map_style='mapbox://styles/mapbox/dark-v10', initial_view_state=vista_mapa, layers=[capa], tooltip={"text": "{Nombre}"}))
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Estanques Activos", len(jaulas_disp))
+        c2.metric("Biomasa Estimada", "4.150.000 kg", "+1.2% semanal")
+        c3.metric("Oxígeno Promedio", f"{df_c['oxigeno_mgl'].mean():.1f} mg/L" if 'oxigeno_mgl' in df_c.columns else "N/D")
+        c4.metric("Eficiencia FCR", "1.12", "Óptimo")
 
-        with col_kpi:
-            st.markdown("#### 📊 KPIs Globales")
-            st.metric("Biomasa Total", "4.150.000 kg", "+1.2% semanal")
-            st.metric("Oxígeno Promedio", f"{df_c['oxigeno_mgl'].mean():.1f} mg/L" if 'oxigeno_mgl' in df_c.columns else "8.2 mg/L")
-            st.metric("Eficiencia FCR", "1.12", "Óptimo")
-
-        st.markdown("---")
-        st.markdown("#### 🟢 Estado de Estanques (Tiempo Real)")
+        st.markdown("#### 🗺️ Matriz Operacional en Tiempo Real")
         
-        # Inyección HTML limpia para la grilla
         if 'jaula_id' in df_c.columns:
             html_grid = '<div class="grid-container">'
             for jaula in jaulas_disp:
@@ -156,41 +138,85 @@ try:
                     temp = float(ult.get('temperatura_c', 12.0))
                     
                     if o2 < 5.0:
-                        html_grid += f'<div class="tank-card status-alert"><div class="t-title">{jaula}</div><p class="t-data">O2: <span style="color:#ef4444; font-weight:bold;">{o2} mg/L 🚨</span></p><p class="t-data">Temp: {temp}°C</p></div>'
+                        html_grid += f'<div class="tank-card status-alert"><div class="t-title">{jaula}</div><p class="t-data">O2 Sup: <span class="c-alert">{o2} mg/L 🚨</span></p><p class="t-data">Temp: <span style="color:white;">{temp}°C</span></p></div>'
                     else:
-                        html_grid += f'<div class="tank-card status-ok"><div class="t-title">{jaula}</div><p class="t-data">O2: <span style="color:#10b981; font-weight:bold;">{o2} mg/L 🟢</span></p><p class="t-data">Temp: {temp}°C</p></div>'
+                        html_grid += f'<div class="tank-card status-ok"><div class="t-title">{jaula}</div><p class="t-data">O2 Sup: <span class="c-ok">{o2} mg/L 🟢</span></p><p class="t-data">Temp: <span style="color:white;">{temp}°C</span></p></div>'
             html_grid += '</div>'
             st.markdown(html_grid, unsafe_allow_html=True)
 
     # ==========================================
-    # VISTA 2: CALIDAD DE AGUA
+    # VISTA 2: CALIDAD DE AGUA (Macro a Micro)
     # ==========================================
     elif menu == "Calidad de Agua":
-        st.markdown('<div class="gradient-text">Análisis de Calidad de Agua</div>', unsafe_allow_html=True)
+        st.markdown('<div class="gradient-text">Calidad de Agua y Oceanografía</div>', unsafe_allow_html=True)
         st.markdown("---")
         
-        jaula_sel = st.selectbox("Seleccionar estanque:", jaulas_disp)
+        # MACRO VISTA
+        st.markdown("#### 🦠 Semáforo de Bioseguridad (Todos los Estanques)")
+        if 'jaula_id' in df_c.columns:
+            html_grid = '<div class="grid-container">'
+            for jaula in jaulas_disp:
+                df_j = df_c[df_c['jaula_id'] == jaula]
+                if not df_j.empty:
+                    ult = df_j.iloc[-1]
+                    o2_fon = float(ult.get('oxigeno_fondo_mgl', 8.0))
+                    algas = int(ult.get('conteo_algas_celulas', 500))
+                    
+                    if o2_fon < 4.5 or algas > 2500:
+                        html_grid += f'<div class="tank-card status-alert"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-alert">{o2_fon} mg/L</span></p><p class="t-data">Algas: <span class="c-alert">{algas}</span></p></div>'
+                    elif o2_fon < 6.0 or algas > 1500:
+                        html_grid += f'<div class="tank-card status-warning"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-warn">{o2_fon} mg/L</span></p><p class="t-data">Algas: <span class="c-warn">{algas}</span></p></div>'
+                    else:
+                        html_grid += f'<div class="tank-card status-ok"><div class="t-title">{jaula}</div><p class="t-data">O2 Fondo: <span class="c-ok">{o2_fon} mg/L</span></p><p class="t-data">Algas: <span class="c-ok">{algas}</span></p></div>'
+            html_grid += '</div>'
+            st.markdown(html_grid, unsafe_allow_html=True)
+
+        st.markdown("---")
+        
+        # MICRO VISTA
+        st.markdown("#### 🔬 Análisis Químico Detallado")
+        jaula_sel = st.selectbox("Seleccionar estanque:", jaulas_disp, key="agua_sel")
         df_j = df_c[df_c['jaula_id'] == jaula_sel] if 'jaula_id' in df_c.columns else df_c
         
         if not df_j.empty:
             ult = df_j.iloc[-1]
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("O2 Superficial (0m)", f"{ult.get('oxigeno_mgl', 0)} mg/L", "Óptimo")
-            c2.metric("O2 Fondo (15m)", f"{ult.get('oxigeno_fondo_mgl', 0)} mg/L", "Estable")
+            c1.metric("O2 Superficial", f"{ult.get('oxigeno_mgl', 0)} mg/L")
+            c2.metric("O2 Fondo (15m)", f"{ult.get('oxigeno_fondo_mgl', 0)} mg/L")
             c3.metric("Temperatura", f"{ult.get('temperatura_c', 0)} °C")
             c4.metric("Fitoplancton", f"{ult.get('conteo_algas_celulas', 0)} cél/ml")
-            
-            st.markdown("#### Tendencia Histórica")
-            st.line_chart(df_j.set_index('timestamp')[['oxigeno_mgl', 'oxigeno_fondo_mgl']], height=350)
+            st.line_chart(df_j.set_index('timestamp')[['oxigeno_mgl', 'oxigeno_fondo_mgl']], height=300)
 
     # ==========================================
-    # VISTA 3: ALIMENTACIÓN
+    # VISTA 3: ALIMENTACIÓN (Macro a Micro)
     # ==========================================
     elif menu == "Alimentación":
-        st.markdown('<div class="gradient-text">Control de Alimentación y Silos</div>', unsafe_allow_html=True)
+        st.markdown('<div class="gradient-text">Sistemas de Alimentación Automática</div>', unsafe_allow_html=True)
         st.markdown("---")
         
-        jaula_sel = st.selectbox("Consola de estanque:", jaulas_disp)
+        # MACRO VISTA
+        st.markdown("#### ⚙️ Estado de Sopladores (Todos los Estanques)")
+        if 'jaula_id' in df_c.columns:
+            html_grid = '<div class="grid-container">'
+            for jaula in jaulas_disp:
+                df_j = df_c[df_c['jaula_id'] == jaula]
+                if not df_j.empty:
+                    ult = df_j.iloc[-1]
+                    estado = int(ult.get('estado_alimentacion', 0))
+                    tasa = float(ult.get('tasa_alimento_kg_min', 0))
+                    
+                    if estado == 1:
+                        html_grid += f'<div class="tank-card status-ok"><div class="t-title">{jaula}</div><p class="t-data">Estado: <span class="c-ok">Activo 🟢</span></p><p class="t-data">Tasa: <span style="color:white;">{tasa} kg/m</span></p></div>'
+                    else:
+                        html_grid += f'<div class="tank-card status-warning"><div class="t-title">{jaula}</div><p class="t-data">Estado: <span class="c-warn">Pausado ⏸️</span></p><p class="t-data">Tasa: <span style="color:white;">0.0 kg/m</span></p></div>'
+            html_grid += '</div>'
+            st.markdown(html_grid, unsafe_allow_html=True)
+
+        st.markdown("---")
+        
+        # MICRO VISTA
+        st.markdown("#### 🎛️ Consola de Control Individual")
+        jaula_sel = st.selectbox("Seleccionar estanque:", jaulas_disp, key="alim_sel")
         df_j = df_c[df_c['jaula_id'] == jaula_sel] if 'jaula_id' in df_c.columns else df_c
         
         if not df_j.empty:
@@ -201,19 +227,19 @@ try:
             c3.metric("Silos Pontón", f"{ult.get('silo_alimento_pct', 0)}%")
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button(f"🛑 DETENER ALIMENTACIÓN EN {jaula_sel}", type="primary"):
-                st.success(f"Comando remoto enviado a {jaula_sel}.")
+            if st.button(f"🛑 CORTAR ALIMENTACIÓN EN {jaula_sel}", type="primary", use_container_width=True):
+                st.success(f"Comando de emergencia enviado a los dosificadores de {jaula_sel}.")
 
     # ==========================================
-    # VISTA 4: METEOROLOGÍA Y CORRIENTES (RESTABLECIDA)
+    # VISTA 4: METEOROLOGÍA Y CORRIENTES
     # ==========================================
     elif menu == "Meteorología y Corrientes":
-        st.markdown('<div class="gradient-text">Meteorología Satelital y Oceanografía</div>', unsafe_allow_html=True)
+        st.markdown('<div class="gradient-text">Entorno Atmosférico y Oceanográfico</div>', unsafe_allow_html=True)
         st.markdown("---")
         
         clima = obtener_clima_reloncavi()
         if clima:
-            st.markdown("#### 📡 Satélite Open-Meteo (Cochamó)")
+            st.markdown("#### 📡 Enlace Satelital Open-Meteo (Cochamó)")
             c1, c2, c3, c4 = st.columns(4)
             viento_nudos = round(clima.get('wind_speed_10m', 0) * 1.94384, 1)
             rafaga_nudos = round(clima.get('wind_gusts_10m', 0) * 1.94384, 1)
@@ -224,27 +250,27 @@ try:
             c4.metric("Presión hPa", f"{clima.get('surface_pressure', '--')}")
             
             st.markdown("---")
-            st.markdown("#### 🌊 Oceanografía Física (Sensores en Pontón)")
+            st.markdown("#### 🌊 Oceanografía Física (Sensores Locales en Pontón)")
             if not df_c.empty:
                 ult_local = df_c.iloc[-1]
                 corriente = float(ult_local.get('corriente_ms', 0.15))
                 salinidad = float(ult_local.get('salinidad_psu', 32.0))
                 
                 col_a, col_b, col_c = st.columns(3)
-                col_a.metric("Corriente (ADCP)", f"{round(corriente * 1.94384, 2)} nudos", "Hidrodinámica OK")
-                col_b.metric("Salinidad", f"{salinidad} PSU", "Sin pluma de río")
-                col_c.metric("Oleaje Estimado", "0.6 m", "Operable")
+                col_a.metric("Corriente (ADCP)", f"{round(corriente * 1.94384, 2)} nudos", "Carga Estructural OK")
+                col_b.metric("Salinidad", f"{salinidad} PSU", "Rango Estable")
+                col_c.metric("Oleaje Estimado", "0.6 m", "Condición Operable")
 
     # ==========================================
     # VISTA 5: ENERGÍA Y SENSORES
     # ==========================================
     elif menu == "Energía y Sensores":
-        st.markdown('<div class="gradient-text">Infraestructura y Conectividad</div>', unsafe_allow_html=True)
+        st.markdown('<div class="gradient-text">Infraestructura y Hardware de Borde</div>', unsafe_allow_html=True)
         st.markdown("---")
         c1, c2, c3 = st.columns(3)
         c1.metric("Generador Principal", "OPERATIVO 🟢", "68% Carga")
         c2.metric("Enlace Starlink", "ONLINE 🟢", "28ms Latencia")
-        c3.metric("Baterías UPS", "100%", "Autonomía Plena")
+        c3.metric("Banco UPS", "100%", "Autonomía Plena")
 
 except Exception as e:
-    st.error(f"Error en el motor de renderizado SCADA: {e}")
+    st.error(f"Error en el núcleo de renderizado SCADA: {e}")
