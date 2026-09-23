@@ -25,11 +25,12 @@ def ir_a_alimentacion():
 # Configurar Gemini AI con Auto-Descubrimiento
 # Configurar Gemini AI con Auto-Descubrimiento
 # Configurar Gemini AI (Versión 3.6 - Requerida por el servidor)
+# Configurar Gemini AI (Optimizado para Velocidad de Respuesta)
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     
-    # Asignamos directamente el modelo exacto que indicó el mensaje de error
-    modelo_ia = genai.GenerativeModel('gemini-3.6-flash')
+    # Usamos un modelo de respuesta rápida (Flash) para eliminar el retraso
+    modelo_ia = genai.GenerativeModel('gemini-2.5-flash')
     ia_disponible = True
 except Exception as e:
     ia_disponible = False
