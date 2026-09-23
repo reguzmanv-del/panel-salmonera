@@ -23,6 +23,7 @@ def ir_a_alimentacion():
 
 # Configurar Gemini AI con manejo de errores inicial
 # Configurar Gemini AI con Auto-Descubrimiento
+# Configurar Gemini AI con Auto-Descubrimiento
 try:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     
